@@ -1,5 +1,7 @@
 {
   open Parser
+
+  let get_rest str = String.sub str 2 ((String.length str) - 2)
 }
 
   rule decoupe = parse
@@ -9,7 +11,7 @@
 (*  | "//"[^'\n']*'\n' { decoupe lexbuf }
   | "/*"(_)*"*/" { decoupe lexbuf }
 *)
-  | "r#" { FORCEIDENT }
+  | ("r#"['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*) { VARNAME (get_rest (String.trim (Lexing.lexeme lexbuf))) }
   | ';' { SCOLON }
   | ',' { COMMA }
   | '{' { LBRACE }
@@ -21,12 +23,16 @@
   | "'" { TAG }
   | ':' { TPT }
   | eof { END }
+  | '.' { DEC }
 
 (* Types *)
-  | ('i'("8"|"16"|"32"|"64"|"128"|"size") | 'u'("8"|"16"|"32"|"64"|"128"|"size") | 'f'("32"|"64") | "bool") { USETYPE (String.trim (Lexing.lexeme lexbuf)) }
+  | 'i'("8"|"16"|"32"|"64"|"128"|"size") { ISUF (String.trim (Lexing.lexeme lexbuf)) }
+  | 'u'("8"|"16"|"32"|"64"|"128"|"size") { USUF (String.trim (Lexing.lexeme lexbuf)) }
+  | 'f'("32"|"64") { FSUF (String.trim (Lexing.lexeme lexbuf)) }
+  | "bool" { BSUF (String.trim (Lexing.lexeme lexbuf)) }
 
  (* Consts *)
-  | ['0'-'9']['_''0'-'9']* { DCONST (int_of_string (String.trim (Lexing.lexeme lexbuf))) }
+  | ['0'-'9']['_''0'-'9']* { DCONST (String.trim (Lexing.lexeme lexbuf)) }
   | "0b"(['0''1']('_')*)+ { BCONST (String.trim (Lexing.lexeme lexbuf)) }
   | "0o"(['0'-'7']('_')*)+ { OCONST (String.trim (Lexing.lexeme lexbuf)) }
   | "0x"(['0'-'9''a'-'f''A'-'F']('_')*)+ { HCONST (String.trim (Lexing.lexeme lexbuf)) }

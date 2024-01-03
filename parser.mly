@@ -3,7 +3,7 @@
   %}
 
 /* Types */
-%token<int> DCONST
+%token<string> DCONST
 %token<string> VARNAME BCONST OCONST HCONST EXP
 
 %type<Ast.ast> e
@@ -17,14 +17,15 @@
 
 %token COMMENT
 %token FORCEIDENT AS LBLSPEC CONTINUE BREAK WHILE LOOP WHILE IF ELSE
-%token LPAREN RPAREN LBRACE RBRACE SCOLON COMMA OFTYPE GIVES TAG TPT
+%token LPAREN RPAREN LBRACE RBRACE SCOLON COMMA OFTYPE GIVES TAG TPT DEC
 %token NEWLINE
 %token END
 
 /* Keywords / reserved */
 %token FN TRUE FALSE
 %token ABSTRACT ASYNC AWAIT BECOME BOX CONST CRATE DO DYN ENUM EXTERN FINAL FOR IMPL IN MACRO MATCH MOD MOVE OVERRIDE PRIV PUB REF SELF SSELF STATIC SUPER TRAIT TYPE TYPEOF UNSAFE UNSIZED USE VIRTUAL WHERE YIELD
-%token<string> USETYPE
+/*%token<string> USETYPE*/
+%token<string> ISUF USUF FSUF BSUF
 
 /* Declarations */
 %token LET RETURN
@@ -34,11 +35,17 @@
 /* Precedence */
 /* Order follows Rust doc */
 %right EQ NEQ LT LEQT GT GEQT
-%left SCOLON
-%left PLUS MINUS SLLI SLRI LAND LXOR LOR BWAND BWOR
+%left BWOR
+%left BWAND
+%left LOR
+%left LXOR
+%left LAND
+%left SLLI SLRI
+%left PLUS MINUS
 %left ASTSK DIV MOD
-%right RBRACE
-%left LBRACE
+%left AS
+
+%left NOT REF MUT NEG
 
 %%
 
@@ -46,11 +53,7 @@ s: fseq END { $1 }
 fseq: f { $1 }
   | f fseq { Seq($1, $2) }
 
-/* not very effective */
-f: FN VARNAME LPAREN ps RPAREN vers b { Defun(Id($2), $4, $6, $7) }/*
-  | FN VARNAME LPAREN RPAREN vers b { Defun(Id($2), Empty, $5, $6) }
-  | FN VARNAME LPAREN ps RPAREN b { Defun(Id($2), $4, Empty, $6) }
-  | FN VARNAME LPAREN RPAREN b { Defun(Id($2), Empty, Empty, $5) }*/
+f: FN VARNAME LPAREN ps RPAREN vers b { Defun(Id($2), $4, $6, $7) }
 
 tag: TAG VARNAME { Tag($2) }
 
@@ -63,12 +66,12 @@ pf: p OFTYPE t { Oftype($1, $3) }
 
 b: LBRACE s RBRACE { $2 }
 s: /* empty */ { Empty }
-  | ds { $1 }
-  | ds e { Seq($1, $2) }
   | esb { $1 }
+  | ds esb { Seq($1, $2) }
+  | ds { $1 }
 
 ds: d { $1 }
-  | d ds { Seq($1, $2) }
+  | ds d { Seq($1, $2) }
 
 d: SCOLON { Empty }
   | e SCOLON { $1 }
@@ -84,53 +87,94 @@ p: VARNAME { Id($1) }
 vers: /* empty */ { Empty }
   | GIVES t { $2 }
 
-t: LPAREN t RPAREN { $2 }
-  | USETYPE { Type($1) }
+cte: icte { $1 }
+  | fcte { $1 }
+  | bcte { $1 }
+
+intg: DCONST { $1 }
+icte: intg someintsuf { ICte($1) }
+  | BCONST someintsuf { ICte($1) }
+  | OCONST someintsuf { ICte($1) }
+  | HCONST someintsuf { ICte($1) }
+
+fcte: intg FSUF { FCte($1) }
+  | intg DEC somef { FCte($1 ^ ".") }
+  | intg DEC intg somef { FCte($1 ^ "." ^ $3) }
+  | intg DEC intg pow somef { FCte($1 ^ "." ^ $3 ^ $4) }
+
+somef: /* empty */ {}
+  | FSUF {}
+
+someintsuf: /* empty */ {}
+  | intsuf {}
+
+pow: EXP { $1 }
+
+bcte: TRUE { BCte("true") }
+  | FALSE { BCte("false") }
+
+intsuf: ISUF { Type($1) }
+  | USUF { Type($1) }
+
+tsuf: intsuf { $1 }
+  | FSUF { Type($1) }
+  | BSUF { Type($1) }
+
+t: LPAREN tsuf RPAREN { $2 }
+  | tsuf { $1 }
+  | REF tsuf { $2 }
+  | REF MUT tsuf { $3 }
+/* Note : on perd l'information ici du REF / MUT */
 
 x: VARNAME { Id($1) }
   | ASTK x { Deref($2) }
 
-e: esb { $1 }
-  | eb { $1 }
+arg: /* empty */ { [] }
+  | e COMMA { [$1] }
+  | e { [$1] }
+  | e COMMA arg { $1::$3 }
 
-esb: DCONST { ICte($1) }
+esb: cte { $1 }
   | VARNAME { Id($1) }
 
-  | x EQ esb { Aff($1, $3) }
-  | esb LPAREN ps RPAREN { Call($1, $3) }
+  | x EQ e { Aff($1, $3) }
+  | e LPAREN arg RPAREN { Call($1, $3) }
 
-  | REF esb { Ref($2) }
-  | MUT esb { Mut($2) }
-  | MINUS esb { Neg($2) }
-  | NOT esb { Not($2) }
-  | ASTK esb { Deref($2) }
+  | REF MUT e { Mut($3) }
+  | REF e { Ref($2) }
+  | MINUS e %prec NEG { Neg($2) }
+  | NOT e { Not($2) }
+  | ASTK e { Deref($2) }
 
-  | esb PLUS esb { Add($1, $3) }
-  | esb MINUS esb { Sub($1, $3) }
-  | esb ASTK esb { Mul($1, $3) }
-  | esb DIV esb { Div($1, $3) }
-  | esb MOD esb { Mod($1, $3) }
-  | esb LAND esb { Land($1, $3) }
-  | esb LOR esb { Lor($1, $3) }
-  | esb LXOR esb { Lxor($1, $3) }
-  | esb SLLI esb { Slli($1, $3) }
-  | esb SLRI esb { Slri($1, $3) }
-  | esb EQ esb { Eq($1, $3) }
-  | esb NEQ esb { Neq($1, $3) }
-  | esb LT esb { Lt($1, $3) }
-  | esb LEQT esb { Leqt($1, $3) }
-  | esb GT esb { Gt($1, $3) }
-  | esb GEQT esb { Geqt($1, $3) }
-  | esb BWAND esb { Bwand($1, $3) }
-  | esb BWOR esb { Bwor($1, $3) }
+  | e PLUS e { Add($1, $3) }
+  | e MINUS e { Sub($1, $3) }
+  | e ASTK e { Mul($1, $3) }
+  | e DIV e { Div($1, $3) }
+  | e MOD e { Mod($1, $3) }
+  | e LAND e { Land($1, $3) }
+  | e LOR e { Lor($1, $3) }
+  | e LXOR e { Lxor($1, $3) }
+  | e SLLI e { Slli($1, $3) }
+  | e SLRI e { Slri($1, $3) }
+  | e EQ e { Eq($1, $3) }
+  | e NEQ e { Neq($1, $3) }
+  | e LT e { Lt($1, $3) }
+  | e LEQT e { Leqt($1, $3) }
+  | e GT e { Gt($1, $3) }
+  | e GEQT e { Geqt($1, $3) }
+  | e BWAND e { Bwand($1, $3) }
+  | e BWOR e { Bwor($1, $3) }
 
-  | LPAREN esb RPAREN { Paren($2) }
+  | LPAREN e RPAREN { Paren($2) }
 
-  | esb AS t { Cast($1, $3) }
+  | e AS t { Cast($1, $3) }
 
   | CONTINUE lo { Continue($2) }
-  | BREAK lo eo { Break($2, $3) }
-  | RETURN eo { Return($2) }
+  | BREAK lo eosb { Break($2, $3) }
+  | RETURN eosb { Return($2) }
+
+eosb: /*empty */ { Empty }
+  | e { $1 }
 
 lo: /* empty */ { Empty }
   | TAG VARNAME { Tag($2) }
@@ -148,3 +192,6 @@ ifs: IF e b { If($2, $3) }
 
 bif: b { $1 }
   | ifs { $1 }
+
+e: esb { $1 }
+  | eb { $1 }

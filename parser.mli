@@ -1,5 +1,5 @@
 type token =
-  | DCONST of (int)
+  | DCONST of (string)
   | VARNAME of (string)
   | BCONST of (string)
   | OCONST of (string)
@@ -47,6 +47,7 @@ type token =
   | GIVES
   | TAG
   | TPT
+  | DEC
   | NEWLINE
   | END
   | FN
@@ -86,7 +87,10 @@ type token =
   | VIRTUAL
   | WHERE
   | YIELD
-  | USETYPE of (string)
+  | ISUF of (string)
+  | USUF of (string)
+  | FSUF of (string)
+  | BSUF of (string)
   | LET
   | RETURN
 

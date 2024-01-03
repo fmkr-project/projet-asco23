@@ -5,10 +5,9 @@ type ast =
   | Seq of ast * ast
   | Oftype of ast * ast
   (* Types *)
-  | ICte of int
-  | UCte of int
-  | FCte of float
-  | BCte of bool
+  | ICte of string
+  | FCte of string
+  | BCte of string
   | Id of string
   (* Uops *)
   | Ref of ast
@@ -39,7 +38,7 @@ type ast =
   | Cast of ast * ast
   | Aff of ast * ast
   | Setf of ast * ast * ast
-  | Call of ast * ast
+  | Call of ast * ast list
   | Continue of ast
   | Break of ast * ast
   | Return of ast
@@ -92,6 +91,9 @@ let rec aff_aux indt ast =
       print_sep (indt @ ["|\n"]);
       aff_aux (indt @ ["  "]) right end
   in
+  let print_args indt li =
+    List.fold_left (fun () elt -> print_mono indt "" elt) () li
+  in
   
   print_sep_spec indt;
   match ast with
@@ -103,7 +105,7 @@ let rec aff_aux indt ast =
   | Seq(al,ar) -> print_duo indt "Seq" al ar
   | Oftype(x,t) -> print_duo indt "Oftype" x t
 
-  | ICte(n) -> let hl = "ICte(" ^ (string_of_int n) ^ ")" in
+  | ICte(n) -> let hl = "ICte(" ^ n ^ ")" in
                print_void indt hl
   | Id(str) -> let hl = "Id(" ^ str ^ ")" in
                print_void indt hl
@@ -136,7 +138,9 @@ let rec aff_aux indt ast =
   | Cast(x,t) -> print_duo indt "Cast" x t
   | Aff(al,ar) -> print_duo indt "Aff" al ar
   | Setf(x,t,e) -> print_trio indt "Setf" x t e
-  | Call(al,ar) -> print_duo indt "Call" al ar
+  | Call(al,ar) -> begin
+      print_mono indt "Call" al;
+      print_args indt ar end
   | Continue(e) -> print_mono indt "Continue" e
   | Break(al,ar) -> print_duo indt "Break" al ar
   | Return(e) -> print_mono indt "Return" e

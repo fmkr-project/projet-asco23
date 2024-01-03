@@ -5,10 +5,9 @@ type ast =
   | Seq of ast * ast
   | Oftype of ast * ast
   (* Types *)
-  | ICte of int
-  | UCte of int
-  | FCte of float
-  | BCte of bool
+  | ICte of string
+  | FCte of string
+  | BCte of string
   | Id of string
   (* Uops *)
   | Ref of ast
@@ -39,7 +38,7 @@ type ast =
   | Cast of ast * ast
   | Aff of ast * ast
   | Setf of ast * ast * ast
-  | Call of ast * ast
+  | Call of ast * ast list
   | Continue of ast
   | Break of ast * ast
   | Return of ast
