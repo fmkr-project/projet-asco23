@@ -11,13 +11,14 @@
 %type<Ast.ast> s
 
 /* Uops */
-%token REF MUT NEG NOT ASTK
+%token AND MUT NEG NOT ASTK EQ
 /* Bops */
-%token PLUS MINUS DIV MOD LAND LOR LXOR SLLI SLRI EQ NEQ LT LEQT GT GEQT BWAND BWOR
+%token PLUS MINUS DIV MOD LOR LXOR SLLI SLRI DEQ NEQ LT LEQT GT GEQT BWAND BWOR
 
 %token COMMENT
 %token FORCEIDENT AS LBLSPEC CONTINUE BREAK WHILE LOOP WHILE IF ELSE
-%token LPAREN RPAREN LBRACE RBRACE SCOLON COMMA OFTYPE GIVES TAG TPT DEC
+%token LPAREN RPAREN LBRACE RBRACE SCOLON COMMA OFTYPE GIVES DEC
+%token<string> TAG
 %token NEWLINE
 %token END
 
@@ -34,9 +35,10 @@
 %start s
 /* Precedence */
 /* Order follows Rust doc */
-%right EQ NEQ LT LEQT GT GEQT
+%right EQ
 %left BWOR
 %left BWAND
+%nonassoc DEQ NEQ LT LEQT GT GEQT
 %left LOR
 %left LXOR
 %left LAND
@@ -55,12 +57,11 @@ fseq: f { $1 }
 
 f: FN VARNAME LPAREN ps RPAREN vers b { Defun(Id($2), $4, $6, $7) }
 
-tag: TAG VARNAME { Tag($2) }
 
 ps: /* empty */ { Empty }
   | pf COMMA { $1 }
   | pf { $1 }
-  | pf COMMA pf { Seq($1, $3) }
+  | pf COMMA ps { Seq($1, $3) }
 
 pf: p OFTYPE t { Oftype($1, $3) }
 
@@ -75,8 +76,11 @@ ds: d { $1 }
 
 d: SCOLON { Empty }
   | e SCOLON { $1 }
-  | LET p vers eo SCOLON { Setf($2, $3, $4) }
+  | LET p lvers eo SCOLON { Setf($2, $3, $4) }
   | f { $1 }
+
+lvers: /* empty */ { Empty }
+  | OFTYPE t { $2 }
 
 eo: /* empty */ { Empty }
   | EQ e { $2 }
@@ -98,9 +102,11 @@ icte: intg someintsuf { ICte($1) }
   | HCONST someintsuf { ICte($1) }
 
 fcte: intg FSUF { FCte($1) }
-  | intg DEC somef { FCte($1 ^ ".") }
+  | intg DEC { FCte($1 ^ ".") }
   | intg DEC intg somef { FCte($1 ^ "." ^ $3) }
+  | intg pow somef { FCte($1 ^ $2) }
   | intg DEC intg pow somef { FCte($1 ^ "." ^ $3 ^ $4) }
+/* l'information type est perdue */
 
 somef: /* empty */ {}
   | FSUF {}
@@ -122,8 +128,9 @@ tsuf: intsuf { $1 }
 
 t: LPAREN tsuf RPAREN { $2 }
   | tsuf { $1 }
-  | REF tsuf { $2 }
-  | REF MUT tsuf { $3 }
+  | AND tsuf { $2 }
+  | AND MUT tsuf { $3 }
+  | LPAREN RPAREN { Type("unit") }
 /* Note : on perd l'information ici du REF / MUT */
 
 x: VARNAME { Id($1) }
@@ -140,8 +147,8 @@ esb: cte { $1 }
   | x EQ e { Aff($1, $3) }
   | e LPAREN arg RPAREN { Call($1, $3) }
 
-  | REF MUT e { Mut($3) }
-  | REF e { Ref($2) }
+  | AND MUT e { Mut($3) }
+  | AND e { Ref($2) }
   | MINUS e %prec NEG { Neg($2) }
   | NOT e { Not($2) }
   | ASTK e { Deref($2) }
@@ -151,12 +158,12 @@ esb: cte { $1 }
   | e ASTK e { Mul($1, $3) }
   | e DIV e { Div($1, $3) }
   | e MOD e { Mod($1, $3) }
-  | e LAND e { Land($1, $3) }
+  | e AND e { Land($1, $3) }
   | e LOR e { Lor($1, $3) }
   | e LXOR e { Lxor($1, $3) }
   | e SLLI e { Slli($1, $3) }
   | e SLRI e { Slri($1, $3) }
-  | e EQ e { Eq($1, $3) }
+  | e DEQ e { Eq($1, $3) }
   | e NEQ e { Neq($1, $3) }
   | e LT e { Lt($1, $3) }
   | e LEQT e { Leqt($1, $3) }
@@ -176,11 +183,13 @@ esb: cte { $1 }
 eosb: /*empty */ { Empty }
   | e { $1 }
 
+tag: TAG { Tag($1) }
+
 lo: /* empty */ { Empty }
-  | TAG VARNAME { Tag($2) }
+  | tag { $1 }
 
 lob: /* empty */ { Empty }
-  | TAG VARNAME TPT { Tag($2) }
+  | tag OFTYPE { $1 }
 
 eb: lob b { Lblk($1, $2) }
   | lob LOOP b { Loop($1, $3) }

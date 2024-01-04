@@ -107,6 +107,10 @@ let rec aff_aux indt ast =
 
   | ICte(n) -> let hl = "ICte(" ^ n ^ ")" in
                print_void indt hl
+  | FCte(x) -> let hl = "FCte(" ^ x ^ ")" in
+               print_void indt hl
+  | BCte(x) -> let hl = "BCte(" ^ x ^ ")" in
+               print_void indt hl
   | Id(str) -> let hl = "Id(" ^ str ^ ")" in
                print_void indt hl
 

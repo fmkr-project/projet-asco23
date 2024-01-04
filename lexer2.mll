@@ -1,17 +1,17 @@
 {
   open Parser
 
-  let get_rest str = String.sub str 2 ((String.length str) - 2)
+  let get_rest j str = String.sub str j ((String.length str) - j)
 }
 
   rule decoupe = parse
 | [' ''\t''\n']+ { decoupe lexbuf }
 
 (* Syntaxic elements *)
-(*  | "//"[^'\n']*'\n' { decoupe lexbuf }
+  | "//"[^'\n']*'\n' { decoupe lexbuf }
   | "/*"(_)*"*/" { decoupe lexbuf }
-*)
-  | ("r#"['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*) { VARNAME (get_rest (String.trim (Lexing.lexeme lexbuf))) }
+
+  | ("r#"['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*) { VARNAME (get_rest 2 (String.trim (Lexing.lexeme lexbuf))) }
   | ';' { SCOLON }
   | ',' { COMMA }
   | '{' { LBRACE }
@@ -20,8 +20,7 @@
   | ')' { RPAREN }
   | ':' { OFTYPE }
   | "->" { GIVES }
-  | "'" { TAG }
-  | ':' { TPT }
+  | "'"['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''0'-'9''_']* { TAG (get_rest 1 (String.trim (Lexing.lexeme lexbuf))) }
   | eof { END }
   | '.' { DEC }
 
@@ -33,14 +32,14 @@
 
  (* Consts *)
   | ['0'-'9']['_''0'-'9']* { DCONST (String.trim (Lexing.lexeme lexbuf)) }
-  | "0b"(['0''1']('_')*)+ { BCONST (String.trim (Lexing.lexeme lexbuf)) }
-  | "0o"(['0'-'7']('_')*)+ { OCONST (String.trim (Lexing.lexeme lexbuf)) }
-  | "0x"(['0'-'9''a'-'f''A'-'F']('_')*)+ { HCONST (String.trim (Lexing.lexeme lexbuf)) }
+  | "0b"['0''1''_']*['0''1']['0''1''_']* { BCONST (String.trim (Lexing.lexeme lexbuf)) }
+  | "0o"['0'-'7''_']*['0'-'7']['0'-'7''_']* { OCONST (String.trim (Lexing.lexeme lexbuf)) }
+  | "0x"['0'-'9''a'-'f''A'-'F''_']*['0'-'9''a'-'f''A'-'F']['0'-'9''a'-'f''A'-'F''_']* { HCONST (String.trim (Lexing.lexeme lexbuf)) }
 
-  | ['e''E']['+''-']?(['0'-'9']('_')*)+ { EXP (String.trim (Lexing.lexeme lexbuf)) }
+  | ['e''E']['+''-']?['0'-'9''_']*['0'-'9']['0'-'9''_']* { EXP (String.trim (Lexing.lexeme lexbuf)) }
 
 (* Uops *)
-  | '&' { REF }
+  | '&' { AND }
 
   | '*' { ASTK }
   | '-' { MINUS }
@@ -50,11 +49,11 @@
   | '+' { PLUS }
   | '/' { DIV }
   | '%' { MOD }
-  | '&' { LAND }
   | '|' { LOR }
   | '^' { LXOR }
   | "<<" { SLLI }
   | ">>" { SLRI }
+  | "==" { DEQ }
   | '=' { EQ }
   | "!=" { NEQ }
   | '<' { LT }

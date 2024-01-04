@@ -5,21 +5,21 @@ type token =
   | OCONST of (string)
   | HCONST of (string)
   | EXP of (string)
-  | REF
+  | AND
   | MUT
   | NEG
   | NOT
   | ASTK
+  | EQ
   | PLUS
   | MINUS
   | DIV
   | MOD
-  | LAND
   | LOR
   | LXOR
   | SLLI
   | SLRI
-  | EQ
+  | DEQ
   | NEQ
   | LT
   | LEQT
@@ -45,9 +45,8 @@ type token =
   | COMMA
   | OFTYPE
   | GIVES
-  | TAG
-  | TPT
   | DEC
+  | TAG of (string)
   | NEWLINE
   | END
   | FN
@@ -74,6 +73,7 @@ type token =
   | OVERRIDE
   | PRIV
   | PUB
+  | REF
   | SELF
   | SSELF
   | STATIC
