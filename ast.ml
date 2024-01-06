@@ -52,6 +52,7 @@ type ast =
   (* Blocks *)
   | Bloc of ast
 
+  (* defun f args type block *)
   | Defun of ast * ast * ast * ast
 
 
